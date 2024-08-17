@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 import numpy as np
 import matplotlib.pyplot as plt
-%matplotlib inline
+
 
 # Preprocess the data for clustering
 def preprocess_data(df, columns):
