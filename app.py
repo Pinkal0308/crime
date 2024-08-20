@@ -114,21 +114,28 @@ def main():
 
                         # Display total crimes dynamically
                         st.write("Total Crimes by State/Region for Selected Crime Types:")
-                        selected_chart_columns = st.multiselect("Select Crime Columns to Display in Chart", selected_crime_columns, default=selected_crime_columns)
+                        st.bar_chart(total_crimes[selected_crime_columns])
 
-                        if selected_chart_columns:
-                            st.write(f"Displaying Data for: {selected_chart_columns}")
-                            st.bar_chart(total_crimes[selected_chart_columns])
+                        # Comparison of Selected Crime Types
+                        st.write("Comparison of Selected Crime Types:")
+                        st.line_chart(total_crimes[selected_crime_columns])
 
-                        # Option to compare the selected crime types
-                        compare_option = st.sidebar.checkbox("Compare Selected Crime Types")
-                        if compare_option:
-                            st.write("Comparison of Selected Crime Types:")
-                            st.line_chart(total_crimes[selected_chart_columns])
+                        # Common Chart for all Selected Crime Types
+                        st.write("Common Chart: Max, Min, and Total for Each Crime Type")
+
+                        # Calculate max, min, and total for each crime type
+                        crime_summary = pd.DataFrame({
+                            'Max': total_crimes.max(),
+                            'Min': total_crimes.min(),
+                            'Total': total_crimes.sum()
+                        })
+
+                        # Display the common chart
+                        st.bar_chart(crime_summary)
 
                         # Show pie chart option for each crime type
-                        for crime_column in selected_chart_columns:
-                            chart_type = st.sidebar.selectbox(f"Select Chart Type for {crime_column}", ["Bar Chart", "Pie Chart"])
+                        for crime_column in selected_crime_columns:
+                            chart_type = st.sidebar.selectbox(f"Select Chart Type for {crime_column}", ["Bar Chart", "Pie Chart"], key=crime_column)
                             if chart_type == "Pie Chart":
                                 st.write(f"Pie Chart for {crime_column}:")
                                 fig, ax = plt.subplots()
@@ -150,3 +157,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
