@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
@@ -6,10 +5,11 @@ from sklearn.cluster import KMeans
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 # Preprocess the data for clustering
 def preprocess_data(df, columns):
-    data = df[columns].fillna(df[columns].mean())  # Fill missing values with the mean of each column
+    # Drop columns with more than 50% missing values
+    df = df[columns].dropna(thresh=len(df) * 0.5, axis=1)
+    data = df.fillna(df.mean())  # Fill remaining missing values with the mean of each column
     scaler = StandardScaler()  # Standardize features by removing the mean and scaling to unit variance
     scaled_data = scaler.fit_transform(data)
     return scaled_data
@@ -37,7 +37,13 @@ def main():
             st.write(df.head())
 
             # Sidebar for column selection
-            columns = st.sidebar.multiselect("Select Numeric Columns for Clustering", df.select_dtypes(include=[np.number]).columns.tolist())
+            columns = st.sidebar.multiselect("Select Numeric Columns for Clustering", 
+                                             df.select_dtypes(include=[np.number]).columns.tolist())
+
+            # Display selected columns dynamically
+            if columns:
+                st.write("Selected Columns for Clustering:")
+                st.write(columns)
 
             if columns:  # Ensure columns are selected
                 # Preprocess the selected columns
@@ -47,12 +53,12 @@ def main():
                 st.title("K-Means Clustering Visualization")
                 k_values = st.sidebar.slider("Select Number of Clusters", min_value=1, max_value=10, value=4)
                 fig, axs = plt.subplots(2, 2, figsize=(10, 8))
-                
+
                 inertias = []
                 for idx, k in enumerate(range(1, 5)):
                     clusters, inertia = train_kmeans_model(scaled_data, n_clusters=k)
                     inertias.append(inertia)
-                    
+
                     # Plotting each cluster
                     ax = axs[idx // 2, idx % 2]
                     ax.scatter(scaled_data[:, 0], scaled_data[:, 1], c=clusters, s=50, cmap='viridis')
@@ -95,39 +101,43 @@ def main():
                     # Filter data by selected states
                     state_data = df[df[state_column].isin(selected_states)]
 
-                    # Sidebar for crime type selection
-                    crime_columns = [col for col in df.columns if 'crime' in col.lower()]
-                    crime_column = st.sidebar.selectbox("Select Crime Column for Analysis", crime_columns)
+                    # Automatically use the selected numeric columns for crime analysis
+                    selected_crime_columns = columns
 
                     # Display filtered data
                     st.write(f"Data for selected states:")
                     st.write(state_data)
 
                     # Analysis
-                    total_crime = state_data.groupby(state_column)[crime_column].sum()
-                    max_crime_state = total_crime.idxmax()
-                    min_crime_state = total_crime.idxmin()
+                    if selected_crime_columns:
+                        total_crimes = state_data.groupby(state_column)[selected_crime_columns].sum()
 
-                    st.write(f"State/Region with Maximum Crime ({crime_column}): {max_crime_state} ({total_crime[max_crime_state]})")
-                    st.write(f"State/Region with Minimum Crime ({crime_column}): {min_crime_state} ({total_crime[min_crime_state]})")
+                        # Display total crimes dynamically
+                        st.write("Total Crimes by State/Region for Selected Crime Types:")
+                        selected_chart_columns = st.multiselect("Select Crime Columns to Display in Chart", selected_crime_columns, default=selected_crime_columns)
 
-                    st.write(f"Total Crime by State/Region:")
+                        if selected_chart_columns:
+                            st.write(f"Displaying Data for: {selected_chart_columns}")
+                            st.bar_chart(total_crimes[selected_chart_columns])
 
-                    # Plot the bar chart directly using Streamlit
-                    st.bar_chart(total_crime)
+                        # Option to compare the selected crime types
+                        compare_option = st.sidebar.checkbox("Compare Selected Crime Types")
+                        if compare_option:
+                            st.write("Comparison of Selected Crime Types:")
+                            st.line_chart(total_crimes[selected_chart_columns])
 
-                    # Show pie chart option
-                    chart_type = st.sidebar.selectbox("Select Chart Type", ["Bar Chart", "Pie Chart"])
-
-                    if chart_type == "Pie Chart":
-                        st.write("Pie Chart for Total Crime:")
-                        fig, ax = plt.subplots()
-                        total_crime.plot.pie(autopct='%1.1f%%', ax=ax)
-                        plt.tight_layout()  # Adjust layout to minimize margins
-                        st.pyplot(fig)
-                    elif chart_type == "Bar Chart":
-                        st.write("Bar Chart for Total Crime:")
-                        st.bar_chart(total_crime)
+                        # Show pie chart option for each crime type
+                        for crime_column in selected_chart_columns:
+                            chart_type = st.sidebar.selectbox(f"Select Chart Type for {crime_column}", ["Bar Chart", "Pie Chart"])
+                            if chart_type == "Pie Chart":
+                                st.write(f"Pie Chart for {crime_column}:")
+                                fig, ax = plt.subplots()
+                                total_crimes[crime_column].plot.pie(autopct='%1.1f%%', ax=ax)
+                                plt.tight_layout()  # Adjust layout to minimize margins
+                                st.pyplot(fig)
+                            elif chart_type == "Bar Chart":
+                                st.write(f"Bar Chart for {crime_column}:")
+                                st.bar_chart(total_crimes[crime_column])
 
                     # Optionally display clustering information
                     cluster_option = st.sidebar.checkbox("Show Cluster Information")
